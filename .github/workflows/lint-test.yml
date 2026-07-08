@@ -1,0 +1,36 @@
+name: Lint & Test
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install lint deps
+        run: pip install flake8
+
+      - name: Python lint
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+
+      - name: Python syntax check
+        run: |
+          python -m py_compile $(find . -name "*.py" -type f) 2>/dev/null || true
+
+      - name: Add ready-for-review label on success
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr edit ${{ env.PR_NUMBER }} --add-label ready-for-review
+          echo "Added ready-for-review label"

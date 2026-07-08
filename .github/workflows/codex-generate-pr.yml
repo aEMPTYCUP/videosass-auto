@@ -1,0 +1,77 @@
+name: Codex Generate PR
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  generate:
+    if: github.event.label.name == 'codex-task'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: pip install requests
+
+      - name: Check if branch exists
+        id: check_branch
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          if git ls-remote --exit-code --heads origin codex/task-${{ env.ISSUE_NUMBER }} 2>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Skip if branch already exists
+        if: steps.check_branch.outputs.exists == 'true'
+        run: |
+          echo "Branch codex/task-${{ env.ISSUE_NUMBER }} already exists, skipping..."
+
+      - name: Generate code via DeepSeek
+        if: steps.check_branch.outputs.exists == 'false'
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: python .github/scripts/codex_client.py
+
+      - name: Commit and create PR
+        if: steps.check_branch.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          git config user.name "Codex Bot"
+          git config user.email "codex-bot@videosass.dev"
+          git checkout -b codex/task-${{ env.ISSUE_NUMBER }}
+          git add .
+          git commit -m "Codex: Implement task #${{ env.ISSUE_NUMBER }}"
+          git push origin codex/task-${{ env.ISSUE_NUMBER }}
+          gh pr create --title "Codex: ${{ github.event.issue.title }}" \
+            --body "自动生成，对应 Issue #${{ env.ISSUE_NUMBER }}" \
+            --base main --head codex/task-${{ env.ISSUE_NUMBER }}
+
+      - name: Comment on Issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ Codex 生成失败，请查看 Actions 日志。'
+            })

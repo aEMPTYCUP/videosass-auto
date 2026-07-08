@@ -1,0 +1,43 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  review:
+    if: github.event.label.name == 'ready-for-review'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: pip install requests
+
+      - name: Check if CLAUDE_REVIEW.md exists
+        id: check_review_guide
+        run: |
+          if [ -f "CLAUDE_REVIEW.md" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Claude review (MiniMax)
+        if: steps.check_review_guide.outputs.exists == 'true'
+        env:
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python .github/scripts/claude_review.py
+
+      - name: Skip if no review guide
+        if: steps.check_review_guide.outputs.exists == 'false'
+        run: echo "CLAUDE_REVIEW.md not found, skipping Claude review"
