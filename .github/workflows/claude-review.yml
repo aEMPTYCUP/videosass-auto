@@ -34,6 +34,7 @@ jobs:
       - name: Run Claude review (MiniMax)
         if: steps.check_review_guide.outputs.exists == 'true'
         env:
+          GH_TOKEN: ${{ github.token }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: python .github/scripts/claude_review.py
