@@ -17,7 +17,7 @@ def parse_codex_output(raw):
         return files
 
 def main():
-    api_key = os.environ["DEEPSEEK_API_KEY"]
+    api_key = os.environ["MINIMAX_API_KEY"]
     title = os.environ["ISSUE_TITLE"]
     body = os.environ["ISSUE_BODY"]
 
@@ -31,23 +31,24 @@ def main():
     user_message = f"任务标题：{title}\n\n任务描述：{body}"
 
     response = requests.post(
-        "https://api.deepseek.com/v1/chat/completions",
+        "https://api.minimaxi.com/anthropic/v1/messages",
         headers={
-            "Authorization": f"Bearer {api_key}",
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
             "Content-Type": "application/json"
         },
         json={
-            "model": "deepseek-chat",
+            "model": "MiniMax-M2.7",
+            "max_tokens": 4000,
+            "system": system_prompt,
             "messages": [
-                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
-            ],
-            "temperature": 0.2
+            ]
         }
     )
     response.raise_for_status()
     data = response.json()
-    content = data["choices"][0]["message"]["content"]
+    content = data["content"][0]["text"]
 
     files = parse_codex_output(content)
 
