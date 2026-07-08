@@ -1,23 +1,30 @@
 # VideoSaaS 代码审查规范
 
+基于 VDH×VDP 逆向分析报告的架构标准。
+
 ## 安全审查
-- 是否引入新权限？是否最小化？
-- 文件路径处理是否安全？禁止 `..` 路径穿越
-- 敏感信息（API Key、Webhook URL）是否通过环境变量/配置文件注入？
-- 输入验证：用户输入的文件路径是否经过校验？
+- [ ] 是否遵守最小权限原则（只申请 tabs, storage, declarativeNetRequest）？
+- [ ] 禁止使用 scripting, webRequest, webNavigation, offscreen
+- [ ] 是否处理 URL 参数隐私（剥离 qyTrace, e2 等追踪参数）？
+- [ ] DOM 扫描不泄露用户数据到第三方
 
 ## 架构一致性
-- 是否遵循项目现有架构？
-- 错误处理是否符合静默降级原则？
+- [ ] 遵循 Manifest V3 规范？
+- [ ] content script / service worker / options 分离？
+- [ ] BroadcastChannel 通信模式（FNV-1a hash per-tab key）？
+- [ ] Option/Result 单子错误处理模式？
 
 ## 错误处理
-- 所有文件操作必须有 try/except 或异常处理
-- 用户提示是否清晰（网络错误、权限不足、路径不存在）
+- [ ] 所有异步操作有 try/catch 或 .catch()
+- [ ] 使用 Option/Result 单子而非 null/undefined
+- [ ] 用户提示清晰（无网络、权限不足、无视频发现）
 
 ## 性能
-- 是否有内存泄漏？
-- 大文件处理是否有截断机制？
+- [ ] MutationObserver 防抖（300ms）？
+- [ ] URL 去重避免重复处理？
+- [ ] Service Worker 生命周期管理？
 
-## 可维护性
-- 代码是否清晰易懂？是否添加必要注释？
-- Python 版本兼容性（>= 3.9）
+## 代码质量
+- [ ] 日志前缀统一 `[VideoSaaS]`？
+- [ ] TypeScript 类型定义完整？
+- [ ] 无硬编码敏感信息（API Key 用环境变量）？
