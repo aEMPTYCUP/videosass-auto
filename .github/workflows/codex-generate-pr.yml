@@ -3,10 +3,24 @@ name: Codex Generate PR
 on:
   issues:
     types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue 编号'
+        required: true
+        type: string
+      issue_title:
+        description: 'Issue 标题'
+        required: true
+        type: string
+      issue_body:
+        description: 'Issue 内容'
+        required: false
+        type: string
 
 jobs:
   generate:
-    if: github.event.label.name == 'codex-task'
+    if: github.event.label.name == 'codex-task' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -23,10 +37,17 @@ jobs:
       - name: Install deps
         run: pip install requests
 
+      - name: Get issue info (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "ISSUE_NUMBER=${{ github.event.inputs.issue_number }}" >> $GITHUB_ENV
+          echo "ISSUE_TITLE=${{ github.event.inputs.issue_title }}" >> $GITHUB_ENV
+          echo "ISSUE_BODY=${{ github.event.inputs.issue_body || '' }}" >> $GITHUB_ENV
+
       - name: Check if branch exists
         id: check_branch
         env:
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ github.event_name == 'workflow_dispatch' && env.ISSUE_NUMBER || github.event.issue.number }}
         run: |
           if git ls-remote --exit-code --heads origin codex/task-${{ env.ISSUE_NUMBER }} 2>/dev/null; then
             echo "exists=true" >> $GITHUB_OUTPUT
@@ -39,20 +60,20 @@ jobs:
         run: |
           echo "Branch codex/task-${{ env.ISSUE_NUMBER }} already exists, skipping..."
 
-      - name: Generate code via DeepSeek
+      - name: Generate code via MiniMax-M3
         if: steps.check_branch.outputs.exists == 'false'
         env:
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
-          ISSUE_BODY: ${{ github.event.issue.body }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event_name == 'workflow_dispatch' && env.ISSUE_TITLE || github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event_name == 'workflow_dispatch' && env.ISSUE_BODY || github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event_name == 'workflow_dispatch' && env.ISSUE_NUMBER || github.event.issue.number }}
         run: python .github/scripts/codex_client.py
 
       - name: Commit and create PR
         if: steps.check_branch.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ github.event_name == 'workflow_dispatch' && env.ISSUE_NUMBER || github.event.issue.number }}
         run: |
           git config user.name "Codex Bot"
           git config user.email "codex-bot@videosass.dev"
