@@ -38,7 +38,7 @@ def main():
             "Content-Type": "application/json"
         },
         json={
-            "model": "MiniMax-M2.7",
+            "model": "MiniMax-M3",
             "max_tokens": 4000,
             "system": system_prompt,
             "messages": [
