@@ -6,29 +6,36 @@
  * @date 2026-07-09
  */
 
-// 动态导入适配器
-let adapters = null;
+const LOG_PREFIX = '[VideoSaaS-platform]';
+
+// 缓存 Promise 而非 Map，避免重复导入
+let adaptersPromise = null;
 
 /**
  * 加载所有适配器
  * @returns {Promise<Map<string, PlatformAdapter>>}
  */
 async function loadAdapters() {
-  if (adapters) {
+  if (adaptersPromise) {
+    return adaptersPromise;
+  }
+
+  adaptersPromise = (async () => {
+    const adapters = new Map();
+
+    // iQIYI 适配器
+    try {
+      const { IqiyiAdapter } = await import('./iqiyi-adapter.js');
+      adapters.set('iqiyi', new IqiyiAdapter());
+      console.log(`${LOG_PREFIX} Loaded IqiyiAdapter`);
+    } catch (error) {
+      console.warn(`${LOG_PREFIX} Failed to load IqiyiAdapter:`, error?.message);
+    }
+
     return adapters;
-  }
+  })();
 
-  adapters = new Map();
-
-  // iQIYI 适配器
-  try {
-    const { IqiyiAdapter } = await import('./iqiyi-adapter.js');
-    adapters.set('iqiyi', new IqiyiAdapter());
-  } catch (error) {
-    console.warn('[VideoSaaS] Failed to load IqiyiAdapter:', error);
-  }
-
-  return adapters;
+  return adaptersPromise;
 }
 
 /**
@@ -40,11 +47,12 @@ async function detectPlatform() {
 
   for (const [name, adapter] of platformAdapters) {
     if (adapter.isSupported()) {
-      console.log(`[VideoSaaS] Detected platform: ${name}`);
+      console.log(`${LOG_PREFIX} Detected: ${name}`);
       return adapter;
     }
   }
 
+  console.log(`${LOG_PREFIX} No supported platform`);
   return null;
 }
 
@@ -56,7 +64,6 @@ async function extractVideoFromCurrentPage() {
   const platform = await detectPlatform();
 
   if (!platform) {
-    console.log('[VideoSaaS] No supported platform detected');
     return null;
   }
 
@@ -64,19 +71,23 @@ async function extractVideoFromCurrentPage() {
 }
 
 /**
- * 获取视频信息（带重试）
+ * 获取视频信息（带重试和防抖）
  * @param {number} retries
  * @param {number} delay
+ * @param {number} debounce - 防抖延迟 ms
  * @returns {Promise<Object|null>}
  */
-async function extractVideoWithRetry(retries = 3, delay = 1000) {
+async function extractVideoWithRetry(retries = 3, delay = 1000, debounce = 300) {
+  // 防抖
+  await new Promise(r => setTimeout(r, debounce));
+
   for (let i = 0; i < retries; i++) {
     const video = await extractVideoFromCurrentPage();
     if (video) {
       return video;
     }
     if (i < retries - 1) {
-      console.log(`[VideoSaaS] Retry ${i + 1}/${retries}...`);
+      console.log(`${LOG_PREFIX} Retry ${i + 1}/${retries}...`);
       await new Promise(r => setTimeout(r, delay));
     }
   }
@@ -89,6 +100,7 @@ if (typeof module !== 'undefined' && module.exports) {
     loadAdapters,
     detectPlatform,
     extractVideoFromCurrentPage,
-    extractVideoWithRetry
+    extractVideoWithRetry,
+    LOG_PREFIX
   };
 }

@@ -41,7 +41,7 @@ class AesDecryptor {
 
       return urlObj.toString();
     } catch (error) {
-      console.error('[VideoSaaS-AES] decryptUrl error:', error);
+      console.error('[VideoSaaS-iQIYI] decryptUrl error:', error.message);
       return url;
     }
   }
@@ -65,7 +65,7 @@ class AesDecryptor {
       this.keyCache.set(key, decrypted);
       return decrypted;
     } catch (error) {
-      console.error('[VideoSaaS-AES] decryptKey error:', error);
+      console.error('[VideoSaaS-iQIYI] decryptKey error:', error.message);
       return key;
     }
   }

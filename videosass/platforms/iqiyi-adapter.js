@@ -21,7 +21,10 @@ class IqiyiAdapter {
    * @returns {boolean}
    */
   isSupported() {
-    return this.domains.some(domain => window.location.hostname.includes(domain));
+    return this.domains.some(domain =>
+      window.location.hostname === domain ||
+      window.location.hostname.endsWith(`.${domain}`)
+    );
   }
 
   /**
@@ -62,7 +65,7 @@ class IqiyiAdapter {
         extractedAt: Date.now()
       };
     } catch (error) {
-      console.error('[VideoSaaS-iQIYI] Extract error:', error);
+      console.error('[VideoSaaS-iQIYI] Extract error:', error.message);
       return null;
     }
   }
