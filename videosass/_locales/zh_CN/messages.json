@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "VideoSaaS",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "视频下载助手 - 基于 VDH×VDP 逆向分析",
+    "description": "Extension description"
+  }
+}
